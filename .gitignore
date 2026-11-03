@@ -1,0 +1,4 @@
+.claude/
+*.bak
+__pycache__/
+gas/.clasprc.json

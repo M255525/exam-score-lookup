@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>課程成績查詢｜跨境電子商務</title>
+<meta name="description" content="跨境電子商務課程｜輸入學號與姓名，查詢自己的測驗成績（多次作答會全部列出）">
+<meta name="theme-color" content="#34508f">
+<meta property="og:title" content="課程成績查詢｜跨境電子商務">
+<meta property="og:description" content="跨境電子商務課程｜輸入學號與姓名，查詢自己的測驗成績（多次作答會全部列出）">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://m255525.github.io/exam-score-lookup/icons/icon-512.png">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  :root {
+    --bg: #f3f4f8;
+    --card: #ffffff;
+    --ink: #1d2333;
+    --muted: #646c80;
+    --line: #dfe2ea;
+    --accent: #34508f;
+    --accent-soft: #e5eaf6;
+    --gold: #a66a00;
+    --gold-soft: #fbf1dc;
+    --warn: #9a5b13;
+    --warn-soft: #fbf0e1;
+    --err: #a83a32;
+    --on-accent: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15171d;
+      --card: #1e2129;
+      --ink: #e6e8ee;
+      --muted: #9aa1b2;
+      --line: #2e323d;
+      --accent: #93acec;
+      --accent-soft: #252f48;
+      --gold: #f0bd5c;
+      --gold-soft: #3a2f18;
+      --warn: #e2a65a;
+      --warn-soft: #3a2c1a;
+      --err: #f08a80;
+      --on-accent: #111a30;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+    line-height: 1.6;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 56px; }
+  .course { display: inline-block; margin: 0 0 6px; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 2px 12px; font-size: .85rem; font-weight: 600; }
+  header h1 { font-size: 1.6rem; margin: 0 0 4px; letter-spacing: .02em; }
+  header p { margin: 0; color: var(--muted); }
+  header a { color: var(--accent); }
+
+  form {
+    display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin: 24px 0 8px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px;
+  }
+  form label { display: flex; flex-direction: column; min-width: 0; padding: 2px 10px; border-radius: 8px; }
+  form label + label { border-left: 1px solid var(--line); }
+  form label span { font-size: .75rem; color: var(--muted); }
+  input {
+    min-width: 0; border: 0; background: transparent; color: var(--ink);
+    font-size: 1.12rem; padding: 2px 0 6px; outline: none; font-family: inherit;
+  }
+  #sid { letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+  form label:focus-within { background: var(--accent-soft); }
+  button {
+    border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent);
+    font-size: 1rem; font-weight: 600; padding: 10px 22px; cursor: pointer; font-family: inherit;
+  }
+  button:disabled { opacity: .55; cursor: wait; }
+  @media (max-width: 560px) {
+    form { grid-template-columns: 1fr; }
+    form label + label { border-left: 0; border-top: 1px solid var(--line); }
+    form button { padding: 12px; }
+  }
+  .hint { color: var(--muted); font-size: .88rem; margin: 0 4px; }
+
+  #status { margin: 20px 0 0; }
+  .msg { padding: 14px 16px; border-radius: 10px; }
+  .msg.err { background: var(--warn-soft); color: var(--err); }
+  .msg.empty { background: var(--warn-soft); color: var(--warn); }
+  .msg.wait { background: var(--accent-soft); color: var(--accent); }
+
+  .who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 20px 0 12px; }
+  .who b { font-size: 1.3rem; }
+  .who span { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .exam { background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin: 0 0 16px; overflow: hidden; }
+  .exam-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .exam-head h2 { margin: 0; font-size: 1.1rem; }
+  .exam-head .times { color: var(--muted); font-size: .88rem; }
+  .best { margin-left: auto; text-align: right; }
+  .best b { font-size: 1.9rem; line-height: 1.1; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .best b small { font-size: .95rem; color: var(--muted); font-weight: 500; }
+  .best span { display: block; font-size: .78rem; color: var(--muted); }
+
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  th { font-size: .8rem; color: var(--muted); font-weight: 600; background: var(--bg); }
+  tr:last-child td { border-bottom: 0; }
+  td.score { font-weight: 700; white-space: nowrap; }
+  tr.top td { background: var(--gold-soft); }
+  .tag { display: inline-block; margin-left: 6px; background: var(--gold); color: var(--card); border-radius: 999px; font-size: .72rem; padding: 0 8px; font-weight: 600; vertical-align: 2px; }
+  .nth { color: var(--muted); font-size: .8rem; }
+  @media (max-width: 560px) {
+    thead { display: none; }
+    tr { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+    tr:last-child { border-bottom: 0; }
+    td { padding: 0; border: 0; }
+    td.score { grid-column: 2; grid-row: 1 / span 3; align-self: center; font-size: 1.25rem; }
+    td[data-k]::before { content: attr(data-k) "："; color: var(--muted); font-size: .8rem; }
+    tr.top { background: var(--gold-soft); }
+  }
+
+  .warning { margin-top: 28px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; font-size: .88rem; color: var(--muted); }
+  .warning h2 { font-size: .95rem; margin: 0 0 6px; color: var(--ink); }
+  .warning ul { margin: 0; padding-left: 1.2em; }
+
+  footer { margin-top: 32px; color: var(--muted); font-size: .8rem; text-align: center; }
+  footer p { margin: 4px 0; }
+  footer a { color: var(--accent); }
+  footer img { vertical-align: middle; margin-top: 6px; }
+
+  .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .top-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .ghost {
+    background: var(--card); color: var(--ink); border: 1px solid var(--line);
+    font-weight: 500; font-size: .85rem; padding: 6px 12px;
+  }
+  #settings {
+    margin: 16px 0 0; background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 16px; font-size: .92rem;
+  }
+  #settings h2 { font-size: 1rem; margin: 0 0 8px; }
+  #settings label { display: flex; align-items: center; gap: 8px; margin: 6px 0; cursor: pointer; }
+  #settings input[type=checkbox] { flex: none; width: 18px; height: 18px; accent-color: var(--accent); }
+  #settings .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+  #settings .row span { color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border-radius: 0; background: transparent; color: var(--ink); font-weight: 500; padding: 4px 12px; font-size: .85rem; }
+  .seg button[aria-pressed=true] { background: var(--accent); color: var(--on-accent); }
+  #settings .small { color: var(--muted); font-size: .8rem; margin: 6px 0 0; }
+  body.fs-l { font-size: 112.5%; }
+  body.fs-xl { font-size: 125%; }
+
+  #warnModal { position: fixed; inset: 0; background: rgba(10,14,24,.55); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 3000; }
+  #warnModal[hidden] { display: none; }
+  #warnModal .box { background: var(--card); color: var(--ink); border-radius: 14px; max-width: 460px; width: 100%; padding: 20px 22px; box-shadow: 0 10px 40px rgba(0,0,0,.3); }
+  #warnModal h2 { margin: 0 0 8px; font-size: 1.15rem; }
+  #warnModal ul { margin: 0 0 16px; padding-left: 1.2em; font-size: .92rem; }
+  #warnModal button { width: 100%; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px;
+    opacity: 0; pointer-events: none; transition: all .25s; z-index: 4000; max-width: 90vw;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  #marqueeBar{position:fixed;top:0;left:0;right:0;height:30px;background:var(--card);border-bottom:1px solid var(--line);z-index:2100;overflow:hidden;display:none;align-items:center;}
+  #marqueeBar.show{display:flex;}
+  #marqueeTrack{white-space:nowrap;display:inline-block;padding-left:100%;animation:marquee-scroll linear infinite;font-size:13px;color:var(--muted);}
+  #marqueeBar:hover #marqueeTrack{animation-play-state:paused}
+  @keyframes marquee-scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+  body.has-marquee{padding-top:30px;}
+  @media (max-width: 480px) { .top-actions .lbl { display: none; } }
+</style>
+</head>
+<body>
+<div id="marqueeBar"><div id="marqueeTrack"></div></div>
+<main>
+  <header class="topbar">
+    <div>
+      <span class="course">跨境電子商務課程</span>
+      <h1>課程成績查詢</h1>
+      <p>輸入學號與姓名，查看自己的測驗成績；同一場考試交了好幾次會全部列出。 <a href="manual.html">使用說明</a></p>
+    </div>
+    <div class="top-actions">
+      <button class="ghost" id="installBtn" type="button" title="加入主畫面">📲<span class="lbl"> 加入主畫面</span></button>
+      <button class="ghost" id="settingsBtn" type="button" aria-expanded="false" aria-controls="settings" title="設定">⚙<span class="lbl"> 設定</span></button>
+    </div>
+  </header>
+
+  <section id="settings" hidden>
+    <h2>常用設定</h2>
+    <label><input type="checkbox" id="optRemember"> 在這台裝置記住我的學號與姓名</label>
+    <div class="row">
+      <span>字體大小</span>
+      <div class="seg" role="group" aria-label="字體大小">
+        <button type="button" data-fs="">標準</button>
+        <button type="button" data-fs="fs-l">大</button>
+        <button type="button" data-fs="fs-xl">特大</button>
+      </div>
+      <button class="ghost" id="clearBtn" type="button">清除本機資料</button>
+    </div>
+    <p class="small">預設不記住。在電腦教室或共用電腦上請不要勾選，用完按「清除本機資料」。設定只存在這台裝置的瀏覽器。</p>
+  </section>
+
+  <form id="form" autocomplete="off">
+    <label><span>學號</span><input id="sid" inputmode="numeric" placeholder="例：412130308" maxlength="20" required></label>
+    <label><span>姓名</span><input id="name" placeholder="與測驗時填寫的相同" maxlength="20" required></label>
+    <button id="btn" type="submit">查詢成績</button>
+  </form>
+  <p class="hint">學號與姓名都要和測驗表單上填的一致才查得到。</p>
+
+  <section id="status" aria-live="polite"></section>
+
+  <section class="warning" id="warning">
+    <h2>使用警語</h2>
+    <ul>
+      <li>成績以老師最後公告為準，本頁僅供查詢參考；資料最多約 5 分鐘後更新。</li>
+      <li>請只查詢自己的成績，勿代他人查詢或散布他人成績。</li>
+      <li>在共用電腦上查詢後，請關閉分頁或按 ⚙ 設定裡的「清除本機資料」。</li>
+      <li>成績有疑問請於上課期間向老師反映。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>資料來源：課程測驗 Google 表單回覆（只回傳學號＋姓名相符的分數，不含作答內容）</p>
+    <p>製作：Mark Tsai（蔡豐全）｜<a href="mailto:tsaimark@gmail.com">tsaimark@gmail.com</a>｜<a href="manual.html#creator">創作者資料</a>｜<a href="manual.html">使用說明</a></p>
+    <img src="https://visitor-badge.laobi.icu/badge?page_id=m255525.examscorelookup" alt="訪客次數" height="20">
+  </footer>
+</main>
+
+<div id="warnModal" hidden role="dialog" aria-modal="true" aria-labelledby="warnTitle">
+  <div class="box">
+    <h2 id="warnTitle">使用前請注意</h2>
+    <ul>
+      <li>成績以老師最後公告為準，本頁僅供查詢參考。</li>
+      <li>請只查詢自己的成績，勿代他人查詢或散布他人成績。</li>
+      <li>在共用電腦上查詢後請關閉分頁。</li>
+    </ul>
+    <button type="button" id="warnOk">我知道了</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbyCNeQIzTCtxgo6HiyDC5XfyQ6sSuSOxx7dlxBYiWxaJ8yYWFotjGGpnF4-VXM2l_9rHA/exec';
+const LS_KEY = 'examScoreLookup.me';
+const SET_KEY = 'examScoreLookup.settings';
+const WARN_KEY = 'examScoreLookup.warned';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+let settings = { remember: false, fs: '' };
+try { Object.assign(settings, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (e) {}
+const saveSettings = () => { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (e) {} };
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// 首次造訪跳出使用警語
+try { if (!localStorage.getItem(WARN_KEY)) $('warnModal').hidden = false; } catch (e) { $('warnModal').hidden = false; }
+$('warnOk').addEventListener('click', () => {
+  $('warnModal').hidden = true;
+  try { localStorage.setItem(WARN_KEY, '1'); } catch (e) {}
+  $('sid').focus();
+});
+
+function applySettings() {
+  $('optRemember').checked = settings.remember;
+  document.body.classList.remove('fs-l', 'fs-xl');
+  if (settings.fs) document.body.classList.add(settings.fs);
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.fs === settings.fs)));
+}
+
+$('settingsBtn').addEventListener('click', () => {
+  const open = $('settings').hidden;
+  $('settings').hidden = !open;
+  $('settingsBtn').setAttribute('aria-expanded', String(open));
+});
+$('optRemember').addEventListener('change', e => {
+  settings.remember = e.target.checked;
+  if (!settings.remember) { try { localStorage.removeItem(LS_KEY); } catch (err) {} }
+  saveSettings(); applySettings();
+  toast(settings.remember ? '下次查詢後會記住學號與姓名' : '已不再記住學號與姓名');
+});
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  settings.fs = b.dataset.fs; saveSettings(); applySettings();
+}));
+$('clearBtn').addEventListener('click', () => {
+  try { localStorage.removeItem(LS_KEY); localStorage.removeItem(SET_KEY); } catch (e) {}
+  settings = { remember: false, fs: '' };
+  applySettings();
+  $('sid').value = ''; $('name').value = '';
+  $('status').innerHTML = '';
+  toast('已清除這台裝置上的學號、姓名與設定');
+});
+
+applySettings();
+if (settings.remember) {
+  try { const me = JSON.parse(localStorage.getItem(LS_KEY) || '{}'); $('sid').value = me.sid || ''; $('name').value = me.name || ''; } catch (e) {}
+}
+
+// Apps Script 偶爾卡住約 30 秒後回 404：25 秒逾時就中止重送一次
+async function fetchJson(url, tries = 2, timeoutMs = 25000) {
+  for (let i = 1; ; i++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    } catch (e) {
+      if (i >= tries) throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+}
+
+// 開頁先預熱後端
+fetch(API_URL + '?action=ping').catch(() => {});
+
+const fmtScore = r => r.got == null ? esc(r.score || '—')
+  : esc(r.got) + (r.full != null ? '<span class="nth"> / ' + esc(r.full) + '</span>' : '');
+
+function render(data, sid, name) {
+  if (!data.ok) {
+    $('status').innerHTML = '<div class="msg err">' + esc(data.error || '查詢失敗，請稍後再試') + '</div>';
+    return;
+  }
+  if (!data.count) {
+    $('status').innerHTML = '<div class="msg empty">查無 <b>' + esc(sid) + '　' + esc(name) +
+      '</b> 的測驗成績。請確認學號與姓名都和作答時填寫的一致（例如沒有錯字、學號沒有少一碼）；仍查不到請於上課期間向老師反映。</div>';
+    return;
+  }
+  const r0 = data.records[data.records.length - 1];
+  const groups = {};
+  data.records.forEach(r => { (groups[r.exam] = groups[r.exam] || []).push(r); });
+  const blocks = Object.entries(groups).map(([exam, list]) => {
+    const best = data.best[exam];
+    const topIdx = best ? list.findIndex(r => r.got === best.got) : -1;
+    const rows = list.map((r, i) => `
+      <tr class="${i === topIdx && list.length > 1 ? 'top' : ''}">
+        <td data-k="時間戳記">${esc(r.time)}${list.length > 1 ? ' <span class="nth">第 ' + (i + 1) + ' 次</span>' : ''}</td>
+        <td data-k="系所">${esc(r.dept || '—')}</td>
+        <td data-k="學號">${esc(r.sid)}</td>
+        <td data-k="姓名">${esc(r.name)}</td>
+        <td class="score">${fmtScore(r)}${i === topIdx && list.length > 1 ? '<span class="tag">最高</span>' : ''}</td>
+      </tr>`).join('');
+    return `
+      <section class="exam">
+        <div class="exam-head">
+          <h2>${esc(exam)}</h2>
+          <span class="times">作答 ${list.length} 次</span>
+          <div class="best">${best ? '<b>' + esc(best.got) + (best.full != null ? '<small> / ' + esc(best.full) + '</small>' : '') + '</b>' : ''}
+            <span>${list.length > 1 ? '最高分' : '分數'}</span></div>
+        </div>
+        <table>
+          <thead><tr><th>時間戳記</th><th>系所</th><th>學號</th><th>姓名</th><th>分數</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </section>`;
+  }).join('');
+  $('status').innerHTML = `
+    <div class="who"><b>${esc(r0.name)}</b><span>${esc(r0.dept)}｜${esc(r0.sid)}｜共 ${data.count} 筆作答紀錄</span></div>
+    ${blocks}`;
+}
+
+$('form').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const sid = $('sid').value.trim();
+  const name = $('name').value.trim();
+  if (!sid || !name) return;
+  if (settings.remember) { try { localStorage.setItem(LS_KEY, JSON.stringify({ sid, name })); } catch (e) {} }
+  $('btn').disabled = true;
+  $('btn').textContent = '查詢中…';
+  $('status').innerHTML = '';
+  const slow = setTimeout(() => {
+    $('status').innerHTML = '<div class="msg wait">查詢服務回應較慢，請稍候，不需要重新整理…</div>';
+  }, 5000);
+  try {
+    render(await fetchJson(API_URL + '?action=lookup&sid=' + encodeURIComponent(sid) + '&name=' + encodeURIComponent(name)), sid, name);
+  } catch (e) {
+    render({ ok: false, error: '無法連線到查詢服務，請檢查網路後再試一次' });
+  } finally {
+    clearTimeout(slow);
+    $('btn').disabled = false;
+    $('btn').textContent = '查詢成績';
+  }
+});
+</script>
+
+<script>
+/* ================= 頂部跑馬燈（獨立運作，共用工作區既有的公告 Google Sheet） ================= */
+(function () {
+  "use strict";
+  var MARQUEE_CHECK_URL = "https://script.google.com/macros/s/AKfycbwKX0DNNbY8y4nf90BFTHtxgfqJcHHcZasRrgycl4QAe52_hkjMWSkYk4xOsqU-JPCROw/exec";
+  var STORAGE_KEY = "examScoreLookupMarquee";
+  var REFRESH_MS = 20 * 60 * 1000;
+
+  var bar = document.getElementById("marqueeBar");
+  var track = document.getElementById("marqueeTrack");
+  var lastKey = null;
+
+  function loadCache() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function saveCache(items) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch (e) {}
+  }
+  function appendParsedText(container, text) {
+    var re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+    var lastIndex = 0, m;
+    while ((m = re.exec(text))) {
+      if (m.index > lastIndex) container.appendChild(document.createTextNode(text.slice(lastIndex, m.index)));
+      var a = document.createElement("a");
+      a.href = m[2];
+      a.textContent = m[1];
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.style.color = "inherit";
+      a.style.textDecoration = "underline";
+      container.appendChild(a);
+      lastIndex = re.lastIndex;
+    }
+    if (lastIndex < text.length) container.appendChild(document.createTextNode(text.slice(lastIndex)));
+  }
+  function buildTrackContent(items) {
+    var frag = document.createDocumentFragment();
+    function appendPass() {
+      items.forEach(function (item, idx) {
+        if (idx > 0) frag.appendChild(document.createTextNode("　★　"));
+        appendParsedText(frag, item);
+      });
+    }
+    appendPass();
+    frag.appendChild(document.createTextNode("　★　"));
+    appendPass();
+    return frag;
+  }
+  function render(items) {
+    if (!items || !items.length) return;
+    var key = JSON.stringify(items);
+    if (key === lastKey) return;
+    lastKey = key;
+    track.innerHTML = "";
+    track.appendChild(buildTrackContent(items));
+    bar.classList.add("show");
+    document.body.classList.add("has-marquee");
+    var width = track.scrollWidth / 2;
+    track.style.animationDuration = Math.max(width / 80, 10) + "s";
+  }
+  function fetchMarquee() {
+    fetch(MARQUEE_CHECK_URL, { method: "POST", body: JSON.stringify({ serial: "" }) })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data && Array.isArray(data.marquee) && data.marquee.length) {
+          saveCache(data.marquee);
+          render(data.marquee);
+        }
+      })
+      .catch(function () {});
+  }
+
+  render(loadCache());
+  fetchMarquee();
+  setInterval(fetchMarquee, REFRESH_MS);
+})();
+</script>
+
+<script>
+/* ================= PWA 加入主畫面（獨立運作） ================= */
+(function () {
+  "use strict";
+  var deferredPrompt = null;
+  var btn = document.getElementById("installBtn");
+  var ua = navigator.userAgent || "";
+  var isIOSDevice = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var isMacDesktop = /Macintosh/.test(ua) && !isIOSDevice;
+  var isSafariEngine = /^((?!chrome|crios|fxios|edgios|android).)*safari/i.test(ua);
+  var isStandalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+
+  function fallbackMessage() {
+    if (isIOSDevice) return "請點畫面上的「分享」圖示，選「加入主畫面」";
+    if (isMacDesktop && isSafariEngine) return "請用選單列「檔案」→「加入 Dock」（Safari 17 以上）";
+    return "目前瀏覽器不支援安裝，或已安裝過";
+  }
+
+  window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); deferredPrompt = e; });
+  window.addEventListener("appinstalled", function () { deferredPrompt = null; });
+
+  if (btn) {
+    if (isStandalone) { btn.style.display = "none"; }
+    else {
+      btn.addEventListener("click", function () {
+        if (!deferredPrompt) { toast(fallbackMessage()); return; }
+        try { deferredPrompt.prompt(); deferredPrompt.userChoice.then(function () { deferredPrompt = null; }); }
+        catch (e) { toast(fallbackMessage()); }
+      });
+    }
+  }
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () { navigator.serviceWorker.register("service-worker.js").catch(function () {}); });
+  }
+})();
+</script>
+</body>
+</html>
