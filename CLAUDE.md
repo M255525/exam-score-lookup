@@ -2,7 +2,7 @@
 
 學生輸入**學號＋姓名** → 列出自己每一次測驗作答的時間戳記、系所、學號、姓名、分數（同一場考試交多次全部列出、標最高分）。2026-11-03 建立，課程「跨境電子商務」。姊妹專案：`../practice-submission-lookup/`（課堂練習存摺，同一套骨架）。
 
-- 前端：單檔 `index.html`＋`manual.html`；本機預覽 port **8848**（`.claude/launch.json` 的 `exam-score-lookup`）。
+- 前端：單檔 `index.html`＋`manual.html`，公開 repo <https://github.com/M255525/exam-score-lookup>，GitHub Pages（Actions，push master 自動部署）<https://m255525.github.io/exam-score-lookup/>；本機預覽 port **8848**（`.claude/launch.json` 的 `exam-score-lookup`）。
 - 後端：`gas/` 是**獨立** Apps Script 專案「課程成績查詢 API」（scriptId 見 `gas/.clasp.json`），Web App 以老師身分執行、任何人可存取。
   - 部署 ID `AKfycbyCNeQIzTCtxgo6HiyDC5XfyQ6sSuSOxx7dlxBYiWxaJ8yYWFotjGGpnF4-VXM2l_9rHA`（寫死在 `index.html` 的 `API_URL`）。
   - 改 Code.gs 後：`cd gas && clasp push --force && clasp create-deployment --deploymentId <上面ID>`，**沿用同一 ID**。
