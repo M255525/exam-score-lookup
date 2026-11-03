@@ -48,7 +48,8 @@ function normalizeName_(s) {
 }
 
 function cellText_(v, tz) {
-  if (v instanceof Date) return Utilities.formatDate(v, tz, 'yyyy/MM/dd HH:mm:ss');
+  // 表單時間戳記帶毫秒，四捨五入到秒才會和試算表顯示一致
+  if (v instanceof Date) return Utilities.formatDate(new Date(Math.round(v.getTime() / 1000) * 1000), tz, 'yyyy/MM/dd HH:mm:ss');
   return String(v == null ? '' : v).trim();
 }
 
@@ -62,13 +63,15 @@ function parseScore_(s) {
 // 讀一份考試的回覆，精簡成 [學號正規化, 姓名正規化, 時間, 分數, 系所, 學號, 姓名]，快取 5 分鐘
 function loadExam_(exam, idx) {
   var cache = CacheService.getScriptCache();
-  var key = 'exam' + idx + '_' + exam.sheetId.slice(0, 10);
+  var key = 'v2_exam' + idx + '_' + exam.sheetId.slice(0, 10);
   var hit = cache.get(key);
   if (hit) return JSON.parse(hit);
 
   var ss = SpreadsheetApp.openById(exam.sheetId);
   var sh = ss.getSheetByName(exam.tab) || ss.getSheets()[0];
-  var values = sh.getDataRange().getValues();
+  var range = sh.getDataRange();
+  var values = range.getValues();
+  var shown = range.getDisplayValues(); // 分數欄要用顯示值（「96 / 100」），原始值只有 96
   if (!values.length) return [];
   var header = values[0].map(function (h) { return String(h).trim(); });
   var cols = FIELDS.map(function (f) { return header.indexOf(f[1]); });
@@ -81,7 +84,10 @@ function loadExam_(exam, idx) {
     var sid = normalizeSid_(values[r][sidCol]);
     if (!sid) continue;
     rows.push([sid, normalizeName_(values[r][nameCol])].concat(
-      cols.map(function (c) { return c < 0 ? '' : cellText_(values[r][c], tz); })));
+      cols.map(function (c, j) {
+        if (c < 0) return '';
+        return FIELDS[j][0] === 'score' ? String(shown[r][c]).trim() : cellText_(values[r][c], tz);
+      })));
   }
   var json = JSON.stringify(rows);
   if (json.length < 95000) cache.put(key, json, CACHE_SECONDS); // CacheService 單筆上限 100KB
