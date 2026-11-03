@@ -167,6 +167,18 @@
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+  /* 滿分慶祝：煙火畫布＋恭喜橫幅 */
+  #fireworks { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2500; }
+  .congrats {
+    margin: 20px 0 0; padding: 16px 18px; border-radius: 12px; text-align: center;
+    background: linear-gradient(135deg, var(--gold-soft), var(--accent-soft));
+    border: 1px solid var(--gold); animation: pop .6s cubic-bezier(.2,1.6,.4,1);
+  }
+  .congrats b { display: block; font-size: 1.5rem; color: var(--gold); letter-spacing: .04em; }
+  .congrats span { color: var(--ink); font-size: .95rem; }
+  @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .congrats { animation: none; } }
+
   #marqueeBar{position:fixed;top:0;left:0;right:0;height:30px;background:var(--card);border-bottom:1px solid var(--line);z-index:2100;overflow:hidden;display:none;align-items:center;}
   #marqueeBar.show{display:flex;}
   #marqueeTrack{white-space:nowrap;display:inline-block;padding-left:100%;animation:marquee-scroll linear infinite;font-size:13px;color:var(--muted);}
@@ -244,6 +256,7 @@
   </div>
 </div>
 <div id="toast"></div>
+<canvas id="fireworks" hidden aria-hidden="true"></canvas>
 
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbyCNeQIzTCtxgo6HiyDC5XfyQ6sSuSOxx7dlxBYiWxaJ8yYWFotjGGpnF4-VXM2l_9rHA/exec';
@@ -370,9 +383,65 @@ function render(data, sid, name) {
         </table>
       </section>`;
   }).join('');
+  // 任一場考試最高分達 100（或等於滿分）→ 恭喜＋煙火
+  const perfect = Object.entries(data.best).filter(([, b]) => b.got != null && (b.got >= 100 || (b.full != null && b.got >= b.full))).map(([exam]) => exam);
+  const congrats = perfect.length ? `
+    <div class="congrats" role="status"><b>🎉 恭喜滿分！🎉</b>
+      <span>${esc(r0.name)}，你在「${perfect.map(esc).join('」、「')}」拿到 100 分，太厲害了！</span></div>` : '';
   $('status').innerHTML = `
+    ${congrats}
     <div class="who"><b>${esc(r0.name)}</b><span>${esc(r0.dept)}｜${esc(r0.sid)}｜共 ${data.count} 筆作答紀錄</span></div>
     ${blocks}`;
+  if (perfect.length) fireworks();
+}
+
+// 煙火：Canvas 粒子，約 4.5 秒後自動停止；系統設定「減少動態效果」時不放
+function fireworks() {
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv = $('fireworks'), ctx = cv.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const W = cv.width = innerWidth * dpr, H = cv.height = innerHeight * dpr;
+  cv.hidden = false;
+  const colors = ['#f5a300', '#ef3e5c', '#1fa8e0', '#7b5cff', '#22b573', '#ff5fb8', '#ff7a1a'];
+  const rockets = [], sparks = [];
+  const end = performance.now() + 3200; // 3.2 秒內持續發射
+  let nextLaunch = 0;
+  cancelAnimationFrame(fireworks._raf);
+  function launch() {
+    rockets.push({ x: W * (0.15 + Math.random() * 0.7), y: H, vx: (Math.random() - .5) * 2 * dpr,
+      vy: -(H / 75 + Math.random() * H / 220), color: colors[Math.random() * colors.length | 0], ty: H * (0.15 + Math.random() * 0.3) });
+  }
+  function burst(r) {
+    const n = 70 + (Math.random() * 30 | 0);
+    for (let i = 0; i < n; i++) {
+      const a = Math.PI * 2 * i / n, sp = (2 + Math.random() * 4) * dpr;
+      sparks.push({ x: r.x, y: r.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, color: Math.random() < .25 ? '#ffd23f' : r.color });
+    }
+  }
+  function frame(t) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+    if (t < end && t > nextLaunch) { launch(); if (Math.random() < .4) launch(); nextLaunch = t + 260 + Math.random() * 260; }
+    for (let i = rockets.length - 1; i >= 0; i--) {
+      const r = rockets[i];
+      r.x += r.vx; r.y += r.vy; r.vy += 0.05 * dpr;
+      ctx.fillStyle = r.color; ctx.beginPath(); ctx.arc(r.x, r.y, 3 * dpr, 0, 7); ctx.fill();
+      if (r.y <= r.ty || r.vy >= 0) { burst(r); rockets.splice(i, 1); }
+    }
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const s = sparks[i];
+      s.x += s.vx; s.y += s.vy; s.vx *= .98; s.vy = s.vy * .98 + 0.06 * dpr; s.life -= .011;
+      if (s.life <= 0) { sparks.splice(i, 1); continue; }
+      ctx.globalAlpha = s.life; ctx.fillStyle = s.color;
+      ctx.beginPath(); ctx.arc(s.x, s.y, 2.6 * dpr, 0, 7); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (t < end || rockets.length || sparks.length) fireworks._raf = requestAnimationFrame(frame);
+    else { ctx.clearRect(0, 0, W, H); cv.hidden = true; }
+  }
+  fireworks._raf = requestAnimationFrame(frame);
 }
 
 $('form').addEventListener('submit', async ev => {
